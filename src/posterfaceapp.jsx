@@ -369,6 +369,61 @@ const extractFaceFromCrop = (img, area) => {
   return canvas.toDataURL('image/jpeg');
 };
 
+
+
+
+// const handleFileChange = async (file) => {
+//   if (file && file.type.startsWith('image/')) {
+//     const reader = new FileReader();
+//     reader.onload = async (event) => {
+//       const imageUrl = event.target.result;
+//       setUploadedImage(imageUrl);
+//       setShowDropZone(false);
+//       setCurrentStep(2);
+//       setStatusMessage('✅ Image uploaded! Removing background...');
+//       setIsRemovingBg(true);
+      
+//       try {
+//         // First, remove the background
+//         const bgRemovedUrl = await removeBgFromImage(imageUrl);
+        
+//         // Store the original image
+//         setOriginalImage(imageUrl);
+        
+//         // Load the background-removed image
+//         const img = new window.Image();
+//         img.crossOrigin = "anonymous";
+//         img.src = bgRemovedUrl;
+        
+//         img.onload = async () => {
+//           imageElementRef.current = img;
+//           setUploadedImage(bgRemovedUrl);
+//           setIsRemovingBg(false);
+//           setStatusMessage('✅ Background removed! Now processing face detection...');
+          
+//           // Then proceed with face detection
+//           await processFaceDetection(img);
+//         };
+        
+//         img.onerror = () => {
+//           // If bg removal fails, use original image
+//           setStatusMessage('⚠️ Background removal failed. Using original image...');
+//           setIsRemovingBg(false);
+//           loadOriginalImage(imageUrl);
+//         };
+        
+//       } catch (error) {
+//         console.error('Background removal error:', error);
+//         setStatusMessage('⚠️ Background removal failed. Using original image...');
+//         setIsRemovingBg(false);
+//         // Fallback to original image
+//         loadOriginalImage(imageUrl);
+//       }
+//     };
+//     reader.readAsDataURL(file);
+//   }
+// };
+
       const handleFileChange = (file) => {  // Remove 'e' parameter, accept file directly
         if (file && file.type.startsWith('image/')) {
           const reader = new FileReader();
