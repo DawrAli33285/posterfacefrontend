@@ -4,7 +4,14 @@ import React, { useState, useRef, useEffect } from 'react';
 
 
 
-const ActionButtons = ({ currentStep, onUpload, onExtract, onAddText, onPreview, onDownload }) => (
+const ActionButtons = ({ currentStep, 
+  onUpload, 
+  onExtract, 
+  onAddText, 
+  onPreview, 
+  onDownload,
+  onManualCrop,  
+  showManualCropButton }) => (
     <div className="flex flex-wrap gap-2 justify-center mb-4">
       <button
         onClick={onUpload}
@@ -16,6 +23,14 @@ const ActionButtons = ({ currentStep, onUpload, onExtract, onAddText, onPreview,
       >
         📁 Upload
       </button>
+      {showManualCropButton && (
+        <button
+          onClick={onManualCrop}
+          className="px-6 py-3 rounded-full font-bold bg-gradient-to-r from-orange-400 to-red-400 text-white shadow-lg hover:opacity-90 transition-all"
+        >
+          ✂️ Manual Crop
+        </button>
+      )}
       <button
         onClick={onExtract}
         disabled={currentStep < 2}
