@@ -219,61 +219,7 @@ const previewCanvasRef = useRef(null);
         }
       };
 
-      // const processFaceDetection = async (img) => {
-      //   try {
-      //     // Wait for model initialization if needed
-      //     if (!isFaceDetectionInitialized) {
-      //       setStatusMessage('📥 Loading face detection models...');
-      //       const loaded = await initFaceDetection();
-      //       if (!loaded) {
-      //         throw new Error('Failed to load face detection models');
-      //       }
-      //       setIsFaceDetectionInitialized(true);
-      //       setStatusMessage('✅ Models loaded! Detecting faces...');
-      //     }
-          
-      //     // Run face detection
-      //     const faces = await detectFaces(img);
-          
-      //     if (faces.length === 0) {
-      //       setStatusMessage('⚠️ No faces detected. You can manually crop the face or try another image.');
-      //       setCurrentStep(2); // Stay at step 2 to show manual crop option
-      //       return;
-      //     }
-          
-      //     // Extract faces as thumbnails
-      //     const faceThumbnails = await Promise.all(
-      //       faces.map(async (face, index) => {
-      //         const faceImage = await extractFace(img, face.box, 10);
-      //         return {
-      //           id: index + 1,
-      //           preview: faceImage,
-      //           box: face.box,
-      //           landmarks: face.landmarks
-      //         };
-      //       })
-      //     );
-          
-      //     // Set the optimal face as selected
-      //     const optimalFace = findOptimalFace(faces);
-      //     if (optimalFace) {
-      //       const optimalFaceIndex = faces.indexOf(optimalFace);
-      //       const optimalThumbnail = faceThumbnails.find(f => f.id === optimalFaceIndex + 1);
-      //       setSelectedFace(optimalThumbnail);
-      //     }
-          
-      //     setDetectedFaces(faceThumbnails);
-      //     setSelectedFace(optimalThumbnail);
-      //     setCurrentStep(3); // Move to step 3 after face is auto-selected
-      //     setStatusMessage('🎨 Face detected! Now add text or click "👁️ Preview" to see your poster.');
-      //   } catch (error) {
-      //     console.error('Error in face detection:', error);
-      //     setStatusMessage(`❌ Error: ${error.message}`);
-      //   }
-      // };
-   
-
-      // ADD THIS NEW FUNCTION (around line 105, before handleFileChange)
+  
       const createImage = (url) =>
         new Promise((resolve, reject) => {
           const image = new Image();
@@ -371,85 +317,118 @@ const extractFaceFromCrop = (img, area) => {
 
 
 
+const handleFileChange = async (file) => {
+  if (!file || !file.type.startsWith('image/')) return;
 
-// const handleFileChange = async (file) => {
-//   if (file && file.type.startsWith('image/')) {
-//     const reader = new FileReader();
-//     reader.onload = async (event) => {
-//       const imageUrl = event.target.result;
-//       setUploadedImage(imageUrl);
-//       setShowDropZone(false);
-//       setCurrentStep(2);
-//       setStatusMessage('✅ Image uploaded! Removing background...');
-//       setIsRemovingBg(true);
-      
-//       try {
-//         // First, remove the background
-//         const bgRemovedUrl = await removeBgFromImage(imageUrl);
-        
-//         // Store the original image
-//         setOriginalImage(imageUrl);
-        
-//         // Load the background-removed image
-//         const img = new window.Image();
-//         img.crossOrigin = "anonymous";
-//         img.src = bgRemovedUrl;
-        
-//         img.onload = async () => {
-//           imageElementRef.current = img;
-//           setUploadedImage(bgRemovedUrl);
-//           setIsRemovingBg(false);
-//           setStatusMessage('✅ Background removed! Now processing face detection...');
-          
-//           // Then proceed with face detection
-//           await processFaceDetection(img);
-//         };
-        
-//         img.onerror = () => {
-//           // If bg removal fails, use original image
-//           setStatusMessage('⚠️ Background removal failed. Using original image...');
-//           setIsRemovingBg(false);
-//           loadOriginalImage(imageUrl);
-//         };
-        
-//       } catch (error) {
-//         console.error('Background removal error:', error);
-//         setStatusMessage('⚠️ Background removal failed. Using original image...');
-//         setIsRemovingBg(false);
-//         // Fallback to original image
-//         loadOriginalImage(imageUrl);
-//       }
-//     };
-//     reader.readAsDataURL(file);
-//   }
-// };
+  try {
+    setStatusMessage('📤 Uploading image...');
+    setProgress(30);
 
-      const handleFileChange = (file) => {  // Remove 'e' parameter, accept file directly
-        if (file && file.type.startsWith('image/')) {
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            const imageUrl = event.target.result;
-            setUploadedImage(imageUrl);
-            setShowDropZone(false);
-            setCurrentStep(2);
-            setStatusMessage('✅ Image uploaded! Now processing face detection...');
-            
-            const img = new window.Image();
-            img.crossOrigin = "anonymous";
-            img.src = imageUrl;
-            
-            img.onload = async () => {
-              imageElementRef.current = img;
-              await processFaceDetection(img);
-            };
-            
-            img.onerror = () => {
-              setStatusMessage('❌ Error loading image. Please try another image.');
-            };
-          };
-          reader.readAsDataURL(file);
+    // First, display the original image
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const imageUrl = event.target.result;
+      setUploadedImage(imageUrl);
+      setCurrentStep(2);
+      setProgress(60);
+
+      try {
+        // Remove background after upload
+        setStatusMessage('🎭 Removing background...');
+        const result = await removeBgFromImage(file);
+        
+        console.log("GOT BACK");
+        console.log(result);
+        
+        // Extract the base64 string from the result object
+        const imageWithNoBg = result.output || result;
+        
+        // Verify the base64 string is valid
+        if (!imageWithNoBg || typeof imageWithNoBg !== 'string' || !imageWithNoBg.startsWith('data:image')) {
+          throw new Error('Invalid image data received');
         }
-      };
+
+        // Update with background-removed image
+        setUploadedImage(imageWithNoBg);
+        setProgress(80);
+        setStatusMessage('✅ Background removed! Now detecting faces...');
+        
+        // Create image element for face detection
+        const img = new window.Image();
+        img.crossOrigin = "anonymous";
+        
+        img.onload = async () => {
+          console.log("Image loaded successfully!");
+          imageElementRef.current = img;
+          setProgress(100);
+          await processFaceDetection(img);
+        };
+        
+        img.onerror = (error) => {
+          console.error("Image failed to load:", error);
+          throw new Error('Failed to load processed image');
+        };
+        
+        img.src = imageWithNoBg;
+
+      } catch (error) {
+        console.error('Error removing background:', error);
+        setStatusMessage('❌ Failed to remove background. Using original image.');
+        
+        // Fallback to original image processing
+        const img = new window.Image();
+        img.crossOrigin = "anonymous";
+        img.onload = async () => {
+          imageElementRef.current = img;
+          setProgress(100);
+          await processFaceDetection(img);
+        };
+        img.onerror = () => {
+          console.error("Original image also failed to load");
+          setStatusMessage('❌ Failed to process image');
+          setProgress(0);
+        };
+        img.src = imageUrl;
+      }
+    };
+    
+    reader.readAsDataURL(file);
+
+  } catch (error) {
+    console.error('Error processing image:', error);
+    setStatusMessage('❌ Failed to process image');
+    setProgress(0);
+  }
+};
+
+
+
+      // const handleFileChange = (file) => {  // Remove 'e' parameter, accept file directly
+      //   if (file && file.type.startsWith('image/')) {
+      //     const reader = new FileReader();
+      //     reader.onload = (event) => {
+      //       const imageUrl = event.target.result;
+      //       setUploadedImage(imageUrl);
+      //       setShowDropZone(false);
+      //       setCurrentStep(2);
+      //       setStatusMessage('✅ Image uploaded! Now processing face detection...');
+            
+      //       const img = new window.Image();
+      //       img.crossOrigin = "anonymous";
+      //       img.src = imageUrl;
+            
+      //       img.onload = async () => {
+      //         imageElementRef.current = img;
+      //         await processFaceDetection(img);
+      //       };
+            
+      //       img.onerror = () => {
+      //         setStatusMessage('❌ Error loading image. Please try another image.');
+      //       };
+      //     };
+      //     reader.readAsDataURL(file);
+      //   }
+      // };
 
 
 
@@ -870,41 +849,42 @@ useEffect(() => {
 
 
       return (
-        <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-400 to-red-400 p-4">
-          <div className="max-w-7xl mx-auto">
-            <Header />
-            
-            {showPreview && (
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-4">
+        <div className="max-w-7xl mx-auto">
+          <Header />
+          
+          {showPreview && (
   <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-lg p-6 max-w-2xl w-full">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xl font-bold">👁️ Preview</h3>
+    <div className="bg-white rounded-lg p-4 max-w-md w-full border border-gray-200">
+      <div className="flex justify-between items-center mb-3">
+        <h3 className="text-lg font-bold text-gray-800">👁️ Preview</h3>
         <button
           onClick={() => setShowPreview(false)}
-          className="p-2 hover:bg-gray-100 rounded text-2xl"
+          className="p-1 hover:bg-gray-100 rounded text-xl text-gray-600 hover:text-gray-800"
         >
           ✕
         </button>
       </div>
-      <div className="flex justify-center">
+      
+      <div className="flex justify-center mb-4">
         <canvas
           ref={previewCanvasRef}
-          width={400}
-          height={620}
-          className="border-2 border-gray-300 rounded mx-auto max-w-full"
+          width={300}
+          height={465}
+          className="border border-gray-300 rounded max-w-full"
         />
       </div>
       
-      {/* Three Action Buttons */}
-      <div className="mt-6 flex flex-col sm:flex-row gap-3">
+      {/* Action Buttons */}
+      <div className="flex flex-col gap-2">
         <button
           onClick={() => {
             setShowPreview(false);
             handleDownloadPDF();
           }}
-          className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg font-semibold hover:opacity-90 transition flex items-center justify-center gap-2"
+          className="w-full px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-sm font-semibold rounded-lg hover:opacity-90 transition flex items-center justify-center gap-2 shadow-sm"
         >
-          📥 Download High-Res PDF
+          📥 Download PDF
         </button>
         
         <button
@@ -912,7 +892,7 @@ useEffect(() => {
             setShowPreview(false);
             setShowManualCrop(true);
           }}
-          className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg font-semibold hover:opacity-90 transition flex items-center justify-center gap-2"
+          className="w-full px-4 py-2 bg-gradient-to-r from-blue-400 to-cyan-500 text-white text-sm font-semibold rounded-lg hover:opacity-90 transition flex items-center justify-center gap-2 shadow-sm"
         >
           ✂️ Adjust Crop
         </button>
@@ -923,190 +903,184 @@ useEffect(() => {
             document.querySelector('input[placeholder*="text"]')?.focus();
             setStatusMessage('✏️ Edit your text in the left sidebar');
           }}
-          className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-semibold hover:opacity-90 transition flex items-center justify-center gap-2"
+          className="w-full px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-sm font-semibold rounded-lg hover:opacity-90 transition flex items-center justify-center gap-2 shadow-sm"
         >
           ✏️ Edit Text
         </button>
       </div>
       
-      <p className="text-center text-sm text-gray-600 mt-4">
-        Preview your poster before downloading high-resolution files for printing.
+      <p className="text-center text-xs text-gray-600 mt-3">
+        Preview your poster before downloading high-resolution files.
       </p>
     </div>
   </div>
-)}  
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-              {/* Left Sidebar */}
-              <div className="lg:col-span-2 space-y-4">
-                <LoginStatus />
-                <UploadNewFace onUpload={handleUpload} onClear={handleClear} />
-             {/* Logo Upload */}
-<div className="bg-white p-4 rounded-lg shadow-lg">
-  <h3 className="font-bold mb-3 flex items-center gap-2">
-    <span>📷</span>
-    Back Logo
-  </h3>
-  <button
-    onClick={() => logoInputRef.current?.click()}
-    className="w-full p-3 bg-gradient-to-r from-blue-400 to-cyan-400 text-white rounded-lg font-bold hover:opacity-90 transition"
-  >
-    📷 Upload Logo
-  </button>
-  {logoImage && (
-    <div className="mt-2 text-sm text-green-600 text-center">✅ Logo uploaded</div>
-  )}
-</div>
-                <PhotoQualityTips />
-                <TextControls textConfig={textConfig} onTextChange={handleTextConfigChange} />
-                <BackTextControls backTextConfig={backTextConfig} onBackTextChange={setBackTextConfig} />
-              </div>
-    
-              {/* Main Content */}
-              <div className="lg:col-span-8 space-y-4">
-              <ActionButtons
-  currentStep={currentStep}
-  onUpload={handleUpload}
-  onExtract={() => {
-    setCurrentStep(3);
-    setStatusMessage('✂️ Face selected! Now add text or click "Preview"');
-  }}
-  onAddText={() => {
-    setCurrentStep(4);
-    setStatusMessage('📝 Text added! Click "Preview" to see your poster');
-  }}
-  onPreview={() => {
-    generatePreview();  // This checks for text and calls proceedToPreview
-    if (textConfig.text && textConfig.text.trim() !== '') {
-      setCurrentStep(5);  // Only advance if text exists
-    }
-  }}
-  onDownload={() => {
-    handleDownloadPDF();  // Don't change step here
-  }}
-  onManualCrop={() => setShowManualCrop(true)}
-  showManualCropButton={uploadedImage && currentStep === 2 && detectedFaces.length === 0}
-/>
-
-                <StatusMessage message={statusMessage} progress={progress} />
-                
-                <div className="bg-white p-6 rounded-lg shadow-xl">
-  <div className="flex flex-col md:flex-row gap-6 justify-center items-start">
-    {!uploadedImage ? (
-      <div
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
-        className={`border-4 border-dashed rounded-lg p-12 text-center cursor-pointer transition w-full ${
-          isDragging ? 'border-purple-500 bg-purple-50' : 'border-gray-300 hover:border-purple-400'
-        }`}
-      >
-        <span className="text-6xl block mb-4">📁</span>
-        <p className="text-xl font-semibold text-gray-600">
-          Drag & Drop your image here
-        </p>
-        <p className="text-gray-500 mt-2">or click to browse files</p>
-      </div>
-    ) : (
-      <>
-       <div className="relative w-full">
-  <CanvasPreview  
-    title="Page 1 - Front"
-    imageRef={imageElementRef}     
-    canvasRef={page1CanvasRef}    
-    showExtractedFace={false}
-    face={selectedFace}
-    isDraggable={false}
-    showFaceBox={false}
-  />
-</div>
-  <div className="w-full">
-    <CanvasPreview 
-      title="Page 2 - Back" 
-      canvasRef={page2CanvasRef}
-      width={300}
-      height={464}
-    />
-  </div>
-      </>
-    )}
-  </div>
-</div>
-
-
-
-
-{showManualCrop && uploadedImage && (
-  <ManualCropModal
-    image={uploadedImage}
-    onComplete={handleManualCrop}
-    onCancel={() => setShowManualCrop(false)}
-  />
 )}
-
-{showTextConfirm && (
-  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-lg p-6 max-w-md">
-      <h3 className="text-xl font-bold mb-4">⚠️ No Text Added</h3>
-      <p className="text-gray-700 mb-6">
-        You haven't added any text to your poster. Do you want to continue without text?
-      </p>
-      <div className="flex gap-3">
-        <button
-          onClick={proceedToPreview}
-          className="flex-1 px-6 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-semibold"
-        >
-          ✅ Continue Without Text
-        </button>
-        <button
-          onClick={() => setShowTextConfirm(false)}
-          className="flex-1 px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 font-semibold"
-        >
-          ❌ Go Back & Add Text
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-
-              </div>
-
-
-    
-              {/* Right Sidebar */}
-              <div className="lg:col-span-2 space-y-4">
-                <a
-                  href="https://youtu.be/VT15VTKmB8o"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full p-3 bg-gradient-to-r from-purple-600 to-purple-800 text-white text-center rounded-lg font-semibold shadow-lg hover:-translate-y-1 transition-transform"
+          
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            {/* Left Sidebar */}
+            <div className="lg:col-span-2 space-y-4">
+              <LoginStatus />
+              <UploadNewFace onUpload={handleUpload} onClear={handleClear} />
+              
+              {/* Logo Upload */}
+              <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-200">
+                <h3 className="font-bold mb-3 flex items-center gap-2 text-gray-800">
+                  <span>📷</span>
+                  Back Logo
+                </h3>
+                <button
+                  onClick={() => logoInputRef.current?.click()}
+                  className="w-full p-3 bg-gradient-to-r from-blue-400 to-indigo-400 text-white rounded-lg font-bold hover:opacity-90 transition shadow-md"
                 >
-                  📺 How To Use
-                </a>
-                <DetectedFaces faces={detectedFaces} onSelectFace={handleSelectFace} />
+                  📷 Upload Logo
+                </button>
+                {logoImage && (
+                  <div className="mt-2 text-sm text-green-600 text-center">✅ Logo uploaded</div>
+                )}
               </div>
+              
+              <PhotoQualityTips />
+              <TextControls textConfig={textConfig} onTextChange={handleTextConfigChange} />
+              <BackTextControls backTextConfig={backTextConfig} onBackTextChange={setBackTextConfig} />
             </div>
-    
-            <input
-  ref={fileInputRef}
-  type="file"
-  accept="image/*"
-  onChange={(e) => handleFileChange(e.target.files[0])}  // Pass file directly
-  className="hidden"
-/>
-
-<input
-          ref={logoInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleLogoChange}
-          className="hidden"
-        />
-          </div>
-    
       
+            {/* Main Content */}
+            <div className="lg:col-span-8 space-y-4">
+              <ActionButtons
+                currentStep={currentStep}
+                onUpload={handleUpload}
+                onExtract={() => {
+                  setCurrentStep(3);
+                  setStatusMessage('✂️ Face selected! Now add text or click "Preview"');
+                }}
+                onAddText={() => {
+                  setCurrentStep(4);
+                  setStatusMessage('📝 Text added! Click "Preview" to see your poster');
+                }}
+                onPreview={() => {
+                  generatePreview();
+                  if (textConfig.text && textConfig.text.trim() !== '') {
+                    setCurrentStep(5);
+                  }
+                }}
+                onDownload={() => {
+                  handleDownloadPDF();
+                }}
+                onManualCrop={() => setShowManualCrop(true)}
+                showManualCropButton={uploadedImage && currentStep === 2 && detectedFaces.length === 0}
+              />
+      
+              <StatusMessage message={statusMessage} progress={progress} />
+              
+              <div className="bg-white p-6 rounded-lg shadow-xl border border-gray-200">
+                <div className="flex flex-col md:flex-row gap-6 justify-center items-start">
+                  {!uploadedImage ? (
+                    <div
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`border-4 border-dashed rounded-lg p-12 text-center cursor-pointer transition w-full ${
+                        isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400'
+                      }`}
+                    >
+                      <span className="text-6xl block mb-4">📁</span>
+                      <p className="text-xl font-semibold text-gray-600">
+                        Drag & Drop your image here
+                      </p>
+                      <p className="text-gray-500 mt-2">or click to browse files</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="relative w-full">
+                        <CanvasPreview  
+                          title="Page 1 - Front"
+                          imageRef={imageElementRef}     
+                          canvasRef={page1CanvasRef}    
+                          showExtractedFace={false}
+                          face={selectedFace}
+                          isDraggable={false}
+                          showFaceBox={false}
+                        />
+                      </div>
+                      <div className="w-full">
+                        <CanvasPreview 
+                          title="Page 2 - Back" 
+                          canvasRef={page2CanvasRef}
+                          width={300}
+                          height={464}
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+      
+              {showManualCrop && uploadedImage && (
+                <ManualCropModal
+                  image={uploadedImage}
+                  onComplete={handleManualCrop}
+                  onCancel={() => setShowManualCrop(false)}
+                />
+              )}
+      
+              {showTextConfirm && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                  <div className="bg-white rounded-lg p-6 max-w-md border border-gray-200">
+                    <h3 className="text-xl font-bold mb-4 text-gray-800">⚠️ No Text Added</h3>
+                    <p className="text-gray-700 mb-6">
+                      You haven't added any text to your poster. Do you want to continue without text?
+                    </p>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={proceedToPreview}
+                        className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-lg hover:opacity-90 font-semibold shadow-md"
+                      >
+                        ✅ Continue Without Text
+                      </button>
+                      <button
+                        onClick={() => setShowTextConfirm(false)}
+                        className="flex-1 px-6 py-3 bg-gradient-to-r from-gray-400 to-gray-500 text-white rounded-lg hover:opacity-90 font-semibold shadow-md"
+                      >
+                        ❌ Go Back & Add Text
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+      
+            {/* Right Sidebar */}
+            <div className="lg:col-span-2 space-y-4">
+              <a
+                href="https://youtu.be/VT15VTKmB8o"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full p-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-center rounded-lg font-semibold shadow-lg hover:-translate-y-1 transition-transform"
+              >
+                📺 How To Use
+              </a>
+              <DetectedFaces faces={detectedFaces} onSelectFace={handleSelectFace} />
+            </div>
+          </div>
+      
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={(e) => handleFileChange(e.target.files[0])}
+            className="hidden"
+          />
+      
+          <input
+            ref={logoInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleLogoChange}
+            className="hidden"
+          />
         </div>
+      </div>
       );
     };
     

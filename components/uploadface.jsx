@@ -1,22 +1,22 @@
-
-import React, { useState, useRef, useEffect } from 'react';
-
+import React from 'react';
+import { Upload } from 'lucide-react';
 
 const UploadNewFace = ({ onUpload, onClear }) => (
-    <div className="bg-gradient-to-br from-pink-400 to-red-500 p-4 rounded-xl mb-4 shadow-lg">
-      <button
-        onClick={() => {
-          onClear();
-          onUpload();
-        }}
-        className="w-full p-4 bg-white text-red-500 border-none rounded-lg text-base font-bold cursor-pointer transition-transform hover:scale-105 shadow-md"
-      >
-        📸 Upload New Face
-      </button>
-      <p className="text-white text-xs mt-2 text-center opacity-90">
-        Start by uploading a photo
-      </p>
-    </div>
-  );
+  <div className="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-5 rounded-xl mb-4 shadow-lg border border-gray-200">
+  <button
+    onClick={() => {
+      onClear();
+      onUpload();
+    }}
+    className="w-full p-4 bg-gradient-to-r from-blue-500 via-purple-600 to-indigo-600 text-white border-none rounded-xl text-base font-bold cursor-pointer transition-all hover:from-blue-600 hover:via-purple-700 hover:to-indigo-700 shadow-md hover:shadow-xl flex items-center justify-center gap-3"
+  >
+    <Upload className="w-6 h-6" />
+    <span>Upload New Face</span>
+  </button>
+  <p className="text-gray-600 text-sm mt-3 text-center font-medium">
+    ✨ Start by uploading a photo
+  </p>
+</div>
+);
 
-  export default UploadNewFace;
+export default UploadNewFace;
